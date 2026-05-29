@@ -30,6 +30,10 @@ type cachedResult struct {
 // RequirementFor resolves the rbac annotation for a Kratos-style operation
 // string "/pkg.v1.Svc/Method" via proto reflection. Results are cached because
 // operation strings are stable for the life of the process.
+//
+// Precedence: if a method carries BOTH skip and require, skip wins (the method
+// is treated as public). Avoid annotating a method with both; the combination is
+// ambiguous and the skip silently takes effect.
 func RequirementFor(operation string) (*Requirement, error) {
 	if v, ok := reqCache.Load(operation); ok {
 		c := v.(cachedResult)

@@ -113,12 +113,20 @@ A tenant-wide policy (`biz1:*`) matches any `biz1:branch1` request via `keyMatch
 so you write one policy instead of one per branch. Supply a custom `DomainComposer`
 if your tenancy is shaped differently — it flows through `HasPermission` end to end.
 
-### Roles
+### Roles (caller-side namespacing)
 
-- **System roles** (`DefaultSystemRoles`: root, super_owner, manager, operator,
-  viewer) are stored un-namespaced (global).
-- **Custom roles** are namespaced `tenant:name` via `NamespacedRole`, so two
-  tenants can both have an `accountant` role without collision.
+The enforcer does **not** namespace roles for you. It exposes helpers so *you*
+can name them consistently when you write policy data:
+
+- `DefaultSystemRoles()` — the conventional global set: root, super_owner,
+  manager, operator, viewer.
+- `IsSystemRole(name, set)` — is this a system role?
+- `NamespacedRole(tenant, name, set)` — returns `name` for system roles
+  (un-namespaced/global) and `tenant:name` for custom roles, so two tenants can
+  each have an `accountant` role without collision.
+
+These are pure helpers — pass your own role set. There is no `Config.SystemRoles`
+field; the enforcer never rewrites role names on its own.
 
 ---
 
@@ -170,6 +178,13 @@ a **documented contract**: the request definition must stay `r = sub, dom, obj, 
 `New` validates the request shape on construction and fails fast with
 `ErrUnsupportedModel` if it isn't `sub,dom,obj,act`, pointing you at the escape
 hatch rather than silently misbehaving.
+
+> **Custom-model authors own tenant isolation.** Validation checks the request
+> *shape* only — it does not inspect your matcher. A custom matcher that omits
+> `r.dom` will pass validation but grant **cross-tenant** access. If you write a
+> custom model, make sure the matcher scopes on the domain (the default model
+> does this via `g(r.sub, p.sub, r.dom)` and `keyMatch2(r.dom, p.dom)`), and carry
+> the `p.dom == "*"` guard forward (see §8).
 
 ### The root subject
 

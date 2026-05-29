@@ -15,14 +15,18 @@ var ErrUnauthorized = errors.New("rbac: unauthorized")
 var ErrUnsupportedModel = errors.New("rbac: unsupported model request shape (want sub, dom, obj, act)")
 
 // Config configures the enforcer. The zero value is usable: it yields the
-// default model, default domain composer, default system roles, and root "root".
+// default model, the default domain composer, and root subject "root".
+//
+// Note on system roles: namespacing of roles (system vs custom) is a caller-side
+// concern handled with the exported helpers DefaultSystemRoles, IsSystemRole, and
+// NamespacedRole — the enforcer does not namespace roles automatically, so there
+// is intentionally no SystemRoles field here.
 type Config struct {
-	Model          string             // empty -> rbacmodel.DefaultModel
-	DomainComposer DomainComposer     // nil -> DefaultDomainComposer
-	SystemRoles    map[string]struct{} // nil -> DefaultSystemRoles()
-	RootSubject    string             // empty -> "root"
-	DisableRoot    bool               // true -> no superuser short-circuit
-	Watcher        persist.Watcher   // nil -> no live reload
+	Model          string          // empty -> rbacmodel.DefaultModel
+	DomainComposer DomainComposer  // nil -> DefaultDomainComposer
+	RootSubject    string          // empty -> "root"
+	DisableRoot    bool            // true -> no superuser short-circuit
+	Watcher        persist.Watcher // nil -> no live reload
 }
 
 func (c Config) rootSubject() string {

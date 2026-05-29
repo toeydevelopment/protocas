@@ -170,16 +170,20 @@ contract, policy/role management patterns, and the `keyMatch2` trap.
 
 ```go
 type Config struct {
-	Model          string              // empty -> default model
-	DomainComposer DomainComposer      // nil   -> tenant:subtenant with :* wildcards
-	SystemRoles    map[string]struct{} // nil   -> {root, super_owner, manager, operator, viewer}
-	RootSubject    string              // empty -> "root"
-	DisableRoot    bool                // true  -> no superuser short-circuit
-	Watcher        persist.Watcher     // nil   -> no live reload (single-instance only)
+	Model          string          // empty -> default model
+	DomainComposer DomainComposer  // nil   -> tenant:subtenant with :* wildcards
+	RootSubject    string          // empty -> "root"
+	DisableRoot    bool            // true  -> no superuser short-circuit
+	Watcher        persist.Watcher // nil   -> no live reload (single-instance only)
 }
 ```
 
 The zero value is usable and reproduces the canonical multi-tenant behavior.
+
+Role namespacing (system vs custom roles) is a **caller-side** concern: use the
+exported helpers `DefaultSystemRoles()`, `IsSystemRole(name, set)`, and
+`NamespacedRole(tenant, name, set)` to build your policy data. The enforcer does
+not namespace roles automatically.
 
 ---
 
