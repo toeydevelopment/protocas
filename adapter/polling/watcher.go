@@ -47,18 +47,22 @@ func (w *Watcher) Update() error {
 	return nil
 }
 
-// Close stops the poll loop (persist.Watcher).
+// Close stops the poll loop (persist.Watcher). It is idempotent and safe to call
+// when not started; only a running watcher closes its done channel.
 func (w *Watcher) Close() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.started {
-		close(w.done)
-		w.started = false
+	if !w.started {
+		return
 	}
+	close(w.done)
+	w.started = false
 }
 
 // Start launches the poll loop, calling reload (typically Enforcer.LoadPolicy)
-// every interval until Close. Safe to call once.
+// every interval until Close. Calling Start while already running is a no-op.
+// A watcher may be restarted after Close: a fresh done channel is created each
+// time, and the loop captures it locally so a later restart never double-closes.
 func (w *Watcher) Start(reload func() error) {
 	w.mu.Lock()
 	if w.started {
@@ -66,6 +70,8 @@ func (w *Watcher) Start(reload func() error) {
 		return
 	}
 	w.started = true
+	w.done = make(chan struct{})
+	done := w.done
 	w.mu.Unlock()
 
 	go func() {
@@ -73,7 +79,7 @@ func (w *Watcher) Start(reload func() error) {
 		defer ticker.Stop()
 		for {
 			select {
-			case <-w.done:
+			case <-done:
 				return
 			case <-ticker.C:
 				_ = reload()

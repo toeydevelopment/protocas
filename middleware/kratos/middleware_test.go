@@ -148,3 +148,20 @@ func TestCustomDenyMapper(t *testing.T) {
 		t.Fatalf("expected ReasonForbidden, got %v", gotReason)
 	}
 }
+
+// TestEmptyTenantFailsClosed guards against global-domain escalation: a Domain
+// func returning an empty tenant (even with a non-empty sub-tenant) must be
+// denied, not resolved against the global "*" domain.
+func TestEmptyTenantFailsClosed(t *testing.T) {
+	cfg := baseConfig(t, "u1")
+	cfg.Domain = func(context.Context) (string, string, error) { return "", "branch1", nil }
+	var reached bool
+	mw := New(cfg)
+	_, err := mw(okHandler(&reached))(ctxWithOp("/rbactest.v1.Svc/Guarded"), nil)
+	if err == nil {
+		t.Fatal("empty tenant must fail closed (no global escalation)")
+	}
+	if reached {
+		t.Fatal("handler must NOT be reached when tenant is empty")
+	}
+}

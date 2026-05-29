@@ -61,7 +61,11 @@ func (c Config) evaluate(ctx context.Context, op string, helper *log.Helper) (Re
 	if err != nil {
 		return ReasonNoTenant, false
 	}
-	if tenantID == "" && subTenantID == "" {
+	// Fail closed whenever the tenant is absent. An empty tenant composes to the
+	// global "*" domain (see enforcer.ComposeDom), so allowing it here would let
+	// a request resolve against global grants; a non-empty sub-tenant with an
+	// empty tenant is nonsensical and must not slip through.
+	if tenantID == "" {
 		return ReasonNoTenant, false
 	}
 
