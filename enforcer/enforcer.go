@@ -43,12 +43,17 @@ func New(adapter persist.Adapter, cfg Config) (*Enforcer, error) {
 		return nil, fmt.Errorf("rbac: new enforcer: %w", err)
 	}
 
-	// Domain-aware role matching: g() resolves a subject's roles across domains
-	// using keyMatch2, so a tenant-wide grant (biz:*) covers every sub-tenant.
-	// The bool reports whether the "g" role manager exists; guard it so a future
-	// model change that drops the g section fails loudly instead of silently.
-	if ok := ce.AddNamedDomainMatchingFunc("g", "keyMatch2", util.KeyMatch2); !ok {
-		return nil, fmt.Errorf("rbac: domain role manager for 'g' not found in model")
+	// Domain-aware role matching: when the model defines a "g" role section,
+	// resolve a subject's roles across domains with keyMatch2 so a tenant-wide
+	// grant (biz:*) covers every sub-tenant. AddNamedDomainMatchingFunc returns
+	// false if the "g" role manager is absent; since we only call it when the
+	// section exists, a false here means the model is internally inconsistent —
+	// fail loudly rather than silently skipping domain matching. Custom models
+	// without roles (no "g" section) are supported and simply skip this.
+	if g, ok := m["g"]; ok && len(g) > 0 {
+		if registered := ce.AddNamedDomainMatchingFunc("g", "keyMatch2", util.KeyMatch2); !registered {
+			return nil, fmt.Errorf("rbac: model defines a 'g' section but its role manager was not initialized")
+		}
 	}
 
 	if adapter != nil {
