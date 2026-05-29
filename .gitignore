@@ -3,5 +3,9 @@
 *.out
 /coverage.out
 /bin/
+# Stray example binaries (go build of a main package in CWD)
+/kratos-service
+# OMC orchestration state — not part of the library
+.omc/
 # Editor
 .DS_Store
