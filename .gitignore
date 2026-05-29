@@ -1,0 +1,7 @@
+# Go
+*.test
+*.out
+/coverage.out
+/bin/
+# Editor
+.DS_Store
