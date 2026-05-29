@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package rbac.v1;
+
+option go_package = "github.com/toeydevelopment/protocas/proto/rbac/v1;rbacv1";
+
+import "google/protobuf/descriptor.proto";
+
+// Requirement is the permission an RPC needs.
+message Requirement {
+  string resource = 1; // e.g. "financial", "inventory"
+  string action   = 2; // e.g. "view", "add", "edit", "delete"
+}
+
+extend google.protobuf.MethodOptions {
+  // require declares the permission this RPC needs.
+  Requirement require = 56811;
+  // skip marks the RPC as public / authorized elsewhere.
+  bool skip = 56812;
+}

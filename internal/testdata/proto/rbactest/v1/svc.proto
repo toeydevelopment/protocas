@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package rbactest.v1;
+
+option go_package = "github.com/toeydevelopment/protocas/internal/testdata/proto/rbactest/v1;rbactestv1";
+
+import "rbac/v1/rbac.proto";
+
+message Empty {}
+
+service Svc {
+  rpc Guarded(Empty) returns (Empty) {
+    option (rbac.v1.require) = { resource: "financial" action: "view" };
+  }
+  rpc Public(Empty) returns (Empty) {
+    option (rbac.v1.skip) = true;
+  }
+  rpc Bare(Empty) returns (Empty) {}
+  rpc Invalid(Empty) returns (Empty) {
+    option (rbac.v1.require) = { resource: "" action: "" };
+  }
+}
