@@ -228,6 +228,19 @@ are invisible to the others until they reload. Pick a watcher:
   defer w.Close()
   ```
 
+- **`adapter/postgres`** — uses PostgreSQL LISTEN/NOTIFY. Near-instant, works on
+  any standard PostgreSQL (no replica set). Pairs with the package's pgx adapter.
+
+  ```go
+  ad, _ := pgadapter.New(ctx, pool)
+  w, _ := pgadapter.NewWatcher(pool, "casbin_policy_changes")
+  enf, _ := enforcer.New(ad, enforcer.Config{Watcher: w})
+  w.Start(func() error { return enf.LoadPolicy() })
+  defer w.Close()
+  ```
+
+  The listener holds one pooled connection for its lifetime — size the pool `>= 2`.
+
 Watcher errors are logged, never fatal — stale-but-up beats down.
 
 ---

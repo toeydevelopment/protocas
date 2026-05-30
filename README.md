@@ -54,6 +54,7 @@ so you only pull what you import.
 | `.../middleware/kratos` | Kratos v2 middleware adapter. |
 | `.../adapter/polling` | Store-agnostic polling watcher (live reload, any store). |
 | `.../adapter/mongo` | MongoDB change-stream watcher (requires a replica set). |
+| `.../adapter/postgres` | PostgreSQL `persist.Adapter` (pgx) + LISTEN/NOTIFY watcher. |
 | `.../proto/rbac/v1` | The `require` / `skip` `MethodOptions` extensions (committed generated code). |
 
 ---
@@ -197,6 +198,7 @@ A is **invisible to B until B reloads**. If you run more than one replica, set a
 |---|---|---|
 | `adapter/polling` | up to one interval | none — works with any store |
 | `adapter/mongo` | near-instant | a MongoDB replica set (change streams) |
+| `adapter/postgres` | near-instant | PostgreSQL LISTEN/NOTIFY (any standard PG) |
 
 ```go
 w := polling.New(15 * time.Second)
@@ -206,6 +208,32 @@ defer w.Close()
 ```
 
 A nil `Watcher` is fine for a single instance; it is a correctness hazard for many.
+
+### PostgreSQL (pgx) store + watcher
+
+`adapter/postgres` provides a pgx-backed `persist.Adapter` (auto-creates the
+`casbin_rule` table) and a LISTEN/NOTIFY watcher:
+
+```go
+import (
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/toeydevelopment/protocas/enforcer"
+	pgadapter "github.com/toeydevelopment/protocas/adapter/postgres"
+)
+
+pool, _ := pgxpool.New(ctx, dsn)         // size >= 2: the watcher holds one conn
+ad, _ := pgadapter.New(ctx, pool)        // auto-creates casbin_rule (pgadapter.WithTable to override)
+w, _ := pgadapter.NewWatcher(pool, "casbin_policy_changes")
+
+enf, _ := enforcer.New(ad, enforcer.Config{Watcher: w})
+w.Start(func() error { return enf.LoadPolicy() })
+defer w.Close()
+```
+
+When this instance changes policy, Casbin issues `NOTIFY`; peers listening on the
+same channel reload. Size the pool `>= 2` — the listener permanently holds one
+connection.
 
 ---
 
@@ -240,6 +268,7 @@ Flip it off once the logs are clean.
 | casbin/v2 | v2.135.x |
 | go-kratos/kratos/v2 (middleware only) | v2.9.x |
 | mongo-driver/v2 (mongo watcher only) | v2.6.x |
+| jackc/pgx/v5 (postgres adapter only) | v5.9.x |
 
 SemVer; current line `v0.1.x` (pre-release).
 
